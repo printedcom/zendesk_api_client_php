@@ -225,7 +225,7 @@ class UserIdentities extends ClientAbstract {
         $id = $params['id'];
         $endPoint = Http::prepare('users/'.$params['user_id'].'/identities/'.$params['id'].'.json');
         $response = Http::send($this->client, $endPoint, null, 'DELETE');
-        if ($this->client->getDebug()->lastResponseCode != 200) {
+        if (!in_array($this->client->getDebug()->lastResponseCode, [200, 204])) {
             throw new ResponseException(__METHOD__);
         }
         $this->client->setSideload(null);
