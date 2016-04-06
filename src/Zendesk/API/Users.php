@@ -158,6 +158,29 @@ class Users extends ClientAbstract {
     }
 
     /**
+     * Create a new user or updates the existing one retrieved by email or external_id
+     *
+     * @param array $params
+     *
+     * @throws ResponseException
+     * @throws \Exception
+     *
+     * @return \stdClass Of structure: { user: ZendeskUser; }
+     */
+    public function createOrUpdate(array $params) {
+        $endPoint = Http::prepare('users/create_or_update.json');
+        $response = Http::send($this->client, $endPoint, array (self::OBJ_NAME => $params), 'POST');
+        if (
+            !is_object($response)
+            || !in_array($this->client->getDebug()->lastResponseCode, [200, 201])
+        ) {
+            throw new ResponseException(__METHOD__);
+        }
+        $this->client->setSideload(null);
+        return $response;
+    }
+
+    /**
      * Merge the specified user (???)
      *
      * @param array $params
