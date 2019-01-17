@@ -11,15 +11,15 @@ trait Create
      *
      * @param array $params
      *
-     * @throws \Exception
-     * @return mixed
+     * @param string $routeKey
+     * @return null|\stdClass
      */
     public function create(array $params, $routeKey = __FUNCTION__)
     {
         try {
             $route = $this->getRoute($routeKey, $params);
         } catch (RouteException $e) {
-            if (! isset($this->resourceName)) {
+            if (!isset($this->resourceName)) {
                 $this->resourceName = $this->getResourceNameFromClass();
             }
 

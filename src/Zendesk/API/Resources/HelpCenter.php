@@ -4,6 +4,8 @@ namespace Zendesk\API\Resources;
 
 use Zendesk\API\HttpClient;
 use Zendesk\API\Resources\HelpCenter\Categories;
+use Zendesk\API\Resources\HelpCenter\Sections;
+use Zendesk\API\Resources\HelpCenter\Articles;
 use Zendesk\API\Traits\Utility\ChainedParametersTrait;
 use Zendesk\API\Traits\Utility\InstantiatorTrait;
 
@@ -11,6 +13,8 @@ use Zendesk\API\Traits\Utility\InstantiatorTrait;
  * This class serves as a container to allow $this->client->helpCenter
  *
  * @method Categories categories()
+ * @method Sections sections()
+ * @method Articles articles()
  */
 class HelpCenter
 {
@@ -36,7 +40,9 @@ class HelpCenter
     public static function getValidSubResources()
     {
         return [
-            'categories' => Categories::class
+            'categories'    => Categories::class,
+            'sections'      => Sections::class,
+            'articles'      => Articles::class,
         ];
     }
 }

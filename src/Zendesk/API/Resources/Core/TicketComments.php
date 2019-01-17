@@ -46,7 +46,7 @@ class TicketComments extends ResourceAbstract
      * @throws MissingParametersException
      * @throws \Exception
      *
-     * @return mixed
+     * @return \stdClass | null
      */
     public function findAll(array $queryParams = [])
     {
@@ -67,7 +67,7 @@ class TicketComments extends ResourceAbstract
      * @throws MissingParametersException
      * @throws \Exception
      *
-     * @return mixed
+     * @return \stdClass | null
      */
     public function makePrivate(array $params = [])
     {
@@ -89,7 +89,8 @@ class TicketComments extends ResourceAbstract
      */
 
     /**
-     * @param array $params
+     * @param string $id
+     * @param array $queryQueryParams
      *
      * @return mixed|void
      * @throws CustomException
@@ -97,6 +98,6 @@ class TicketComments extends ResourceAbstract
     public function find($id = null, array $queryQueryParams = [])
     {
         throw new CustomException('Method ' . __METHOD__
-                                  . ' does not exist. Try $client->ticket(ticket_id)->comments()->findAll() instead.');
+                                  . ' does not exist. Try $client->tickets(ticket_id)->comments()->findAll() instead.');
     }
 }

@@ -13,8 +13,8 @@ use Zendesk\API\Traits\Utility\InstantiatorTrait;
 /**
  * Class Organizations
  *
- * @method OrganizationMemberships organizationMemberships()
- * @method OrganizationSubscriptions organizationSubscriptions()
+ * @method OrganizationMemberships memberships()
+ * @method OrganizationSubscriptions subscriptions()
  * @method Requests requests()
  * @method OrganizationTickets tickets()
  */
@@ -99,7 +99,7 @@ class Organizations extends ResourceAbstract
      * @param       $name
      * @param array $params
      *
-     * @return array
+     * @return \stdClass | null
      * @throws \Zendesk\API\Exceptions\ApiResponseException
      * @throws \Zendesk\API\Exceptions\AuthException
      */
@@ -113,9 +113,9 @@ class Organizations extends ResourceAbstract
     /**
      * Show an organization's related information
      *
-     * @param $id Organization ID
+     * @param int $id Organization ID
      *
-     * @return array
+     * @return \stdClass | null
      * @throws \Zendesk\API\Exceptions\ApiResponseException
      * @throws \Zendesk\API\Exceptions\AuthException
      */
@@ -125,12 +125,12 @@ class Organizations extends ResourceAbstract
     }
 
     /**
-     * Seach organizations by external ID
+     * Search organizations by external ID
      *
      * @param       $external_id
      * @param array $params
      *
-     * @return array
+     * @return \stdClass | null
      * @throws \Zendesk\API\Exceptions\ApiResponseException
      * @throws \Zendesk\API\Exceptions\AuthException
      */

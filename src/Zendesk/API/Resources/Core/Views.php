@@ -4,7 +4,6 @@ namespace Zendesk\API\Resources\Core;
 
 use Zendesk\API\Exceptions\MissingParametersException;
 use Zendesk\API\Exceptions\ResponseException;
-use Zendesk\API\Http;
 use Zendesk\API\Resources\ResourceAbstract;
 use Zendesk\API\Traits\Resource\Defaults;
 
@@ -14,7 +13,7 @@ use Zendesk\API\Traits\Resource\Defaults;
 class Views extends ResourceAbstract
 {
     use Defaults {
-        findAll as traitFindall;
+        findAll as traitFindAll;
     }
 
     /**
@@ -40,7 +39,7 @@ class Views extends ResourceAbstract
      *
      * @param array $params
      *
-     * @return mixed
+     * @return \stdClass | null
      */
     public function findAllActive(array $params = [])
     {
@@ -52,7 +51,7 @@ class Views extends ResourceAbstract
      *
      * @param array $params
      *
-     * @return mixed
+     * @return \stdClass | null
      */
     public function findAllCompact(array $params = [])
     {
@@ -68,7 +67,7 @@ class Views extends ResourceAbstract
      * @throws ResponseException
      * @throws \Exception
      *
-     * @return mixed
+     * @return \stdClass | null
      */
     public function execute(array $params = [])
     {
@@ -90,7 +89,7 @@ class Views extends ResourceAbstract
      * @throws ResponseException
      * @throws \Exception
      *
-     * @return mixed
+     * @return \stdClass | null
      */
     public function tickets(array $params = [])
     {
@@ -112,7 +111,7 @@ class Views extends ResourceAbstract
      * @throws ResponseException
      * @throws \Exception
      *
-     * @return mixed
+     * @return \stdClass | null
      */
     public function count(array $params = [])
     {
@@ -146,7 +145,7 @@ class Views extends ResourceAbstract
      * @throws ResponseException
      * @throws \Exception
      *
-     * @return mixed
+     * @return \stdClass | null
      */
     public function export(array $params = [])
     {
@@ -167,7 +166,7 @@ class Views extends ResourceAbstract
      * @throws ResponseException
      * @throws \Exception
      *
-     * @return mixed
+     * @return \stdClass | null
      */
     public function preview(array $params)
     {
@@ -182,7 +181,7 @@ class Views extends ResourceAbstract
      * @throws ResponseException
      * @throws \Exception
      *
-     * @return mixed
+     * @return \stdClass | null
      */
     public function previewCount(array $params)
     {
@@ -192,8 +191,8 @@ class Views extends ResourceAbstract
     /**
      * Get the ticket ID from the chained parameters or a params array
      *
-     * @param  array  &$params
-     * @return int
+     * @param array &$params
+     * @return string
      */
     private function getIdFromParams(array &$params)
     {

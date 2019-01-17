@@ -2,6 +2,7 @@
 
 namespace Zendesk\API\UnitTests\Core;
 
+use Faker\Factory;
 use Zendesk\API\Resources\Core\Users;
 use Zendesk\API\UnitTests\BasicTest;
 
@@ -35,16 +36,37 @@ class UsersTest extends BasicTest
     }
 
     /**
-     * Tests if the nerge enpoint can be called by the client and is passed the correct data
+     * Tests if the merge endpoint can be called by the client and is passed the correct data
      */
     public function testMerge()
     {
-        $postFields = ['id' => 12345];
+        $postFields = [
+            'email' => 'thecustomer@domain.com',
+            'password' => '123456',
+        ];
 
         $this->assertEndpointCalled(function () use ($postFields) {
-            $this->client->users('me')->merge($postFields);
+            $this->client->users()->merge($postFields);
         }, 'users/me/merge.json', 'PUT', ['postFields' => ['user' => $postFields]]);
     }
+
+    /**
+     * Tests if the merge endpoint can be called with admin params and is passed the correct data
+     */
+    public function testAdminMerge()
+    {
+        $userId = 12345;
+        $mergingId = 123456;
+
+        $postFields = [
+            'id' => $mergingId,
+        ];
+
+        $this->assertEndpointCalled(function () use ($userId, $postFields) {
+            $this->client->users($userId)->merge($postFields);
+        }, "users/{$userId}/merge.json", 'PUT', ['postFields' => ['user' => $postFields]]);
+    }
+
 
     /**
      * Tests if the suspend enpoint can be called by the client and is passed the correct ID
@@ -168,5 +190,18 @@ class UsersTest extends BasicTest
         $this->assertEndpointCalled(function () use ($postFields, $userId) {
             $this->client->users($userId)->changePassword($postFields);
         }, "users/{$userId}/password.json", 'PUT');
+    }
+
+    /*
+     * Tests if the createOrUpdate function calls the correct endpoint and passes the correct POST data
+     */
+    public function testCreateOrUpdate()
+    {
+        $faker = Factory::create();
+        $postFields = ['id' => $faker->uuid, 'name' => $faker->name];
+        $result = ['user' => $postFields];
+        $this->assertEndpointCalled(function () use ($postFields) {
+            $this->client->users()->createOrUpdate($postFields);
+        }, 'users/create_or_update.json', 'POST', ['postFields' => $result]);
     }
 }

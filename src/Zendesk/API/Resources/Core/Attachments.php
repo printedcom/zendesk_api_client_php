@@ -2,6 +2,7 @@
 
 namespace Zendesk\API\Resources\Core;
 
+use Psr\Http\Message\StreamInterface;
 use Zendesk\API\Exceptions\CustomException;
 use Zendesk\API\Exceptions\MissingParametersException;
 use Zendesk\API\Http;
@@ -43,18 +44,25 @@ class Attachments extends ResourceAbstract
      * @throws CustomException
      * @throws MissingParametersException
      * @throws \Exception
-     * @return mixed
+     * @return \stdClass | null
      */
     public function upload(array $params)
     {
         if (! $this->hasKeys($params, ['file'])) {
             throw new MissingParametersException(__METHOD__, ['file']);
-        } elseif (! file_exists($params['file'])) {
+        }
+
+        $isFileStream = $params['file'] instanceof StreamInterface;
+        if (! $isFileStream  && ! file_exists($params['file'])) {
             throw new CustomException('File ' . $params['file'] . ' could not be found in ' . __METHOD__);
         }
 
         if (! isset($params['name'])) {
-            $params['name'] = basename($params['file']);
+            if ($isFileStream) {
+                $params['name'] = basename($params['file']->getMetadata('uri'));
+            } else {
+                $params['name'] = basename($params['file']);
+            }
         }
 
         $queryParams = ['filename' => $params['name']];

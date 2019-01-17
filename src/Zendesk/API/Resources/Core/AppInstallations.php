@@ -2,8 +2,12 @@
 
 namespace Zendesk\API\Resources\Core;
 
+use Zendesk\API\Exceptions\RouteException;
 use Zendesk\API\Resources\ResourceAbstract;
-use Zendesk\API\Traits\Resource\Defaults;
+use Zendesk\API\Traits\Resource\Delete;
+use Zendesk\API\Traits\Resource\Find;
+use Zendesk\API\Traits\Resource\FindAll;
+use Zendesk\API\Traits\Resource\Update;
 
 /**
  * The AppInstallations class exposes methods seen at
@@ -11,7 +15,12 @@ use Zendesk\API\Traits\Resource\Defaults;
  */
 class AppInstallations extends ResourceAbstract
 {
-    use Defaults;
+    use Update {
+        update as TraitUpdate;
+    }
+    use Delete;
+    use Find;
+    use FindAll;
 
     /**
      * {@inheritdoc}
@@ -33,7 +42,9 @@ class AppInstallations extends ResourceAbstract
     protected function setUpRoutes()
     {
         $this->setRoutes([
-            'jobStatuses'  => $this->resourceName . '/job_statuses/{job_id}.json',
+            'create' => $this->resourceName . '.json',
+            'update' => $this->resourceName . '/{id}.json',
+            'jobStatuses' => $this->resourceName . '/job_statuses/{job_id}.json',
             'requirements' => $this->resourceName . '/{id}/requirements.json',
         ]);
     }
@@ -43,7 +54,7 @@ class AppInstallations extends ResourceAbstract
      *
      * @param $jobId
      *
-     * @return mixed
+     * @return \stdClass | null
      */
     public function jobStatuses($jobId)
     {
@@ -53,14 +64,63 @@ class AppInstallations extends ResourceAbstract
     /**
      * Lists all Apps Requirements for an installation.
      *
-     * @param null  $appInstallationId
+     * @param null $appInstallationId
      * @param array $params
      *
-     * @return mixed
+     * @return \stdClass | null
      * @throws \Zendesk\API\Exceptions\MissingParametersException
      */
     public function requirements($appInstallationId = null, array $params = [])
     {
         return $this->find($appInstallationId, $params, __FUNCTION__);
+    }
+
+    /**
+     * Installs an app
+     *
+     * @param array  $params
+     *
+     * @param string $routeKey
+     * @return null|\stdClass
+     */
+    public function create(array $params, $routeKey = __FUNCTION__)
+    {
+        try {
+            $route = $this->getRoute($routeKey, $params);
+        } catch (RouteException $e) {
+            if (!isset($this->resourceName)) {
+                $this->resourceName = $this->getResourceNameFromClass();
+            }
+
+            $route = $this->resourceName . '.json';
+            $this->setRoute(__FUNCTION__, $route);
+        }
+
+        return $this->client->post(
+            $route,
+            $params
+        );
+    }
+
+    /**
+     * Updates the settings for the app installation
+     *
+     * @param null $id
+     * @param array $updateResourceFields
+     * @param string $routeKey
+     * @return \stdClass | null
+     */
+    public function update($id = null, array $updateResourceFields = [], $routeKey = __FUNCTION__)
+    {
+        if (empty($id)) {
+            $id = $this->getChainedParameter(__CLASS__);
+        }
+
+        $route = $this->getRoute($routeKey, ['id' => $id]);
+
+        return $this->client->put(
+            $route,
+            $updateResourceFields
+        );
     }
 }

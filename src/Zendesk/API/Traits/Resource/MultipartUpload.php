@@ -2,6 +2,7 @@
 
 namespace Zendesk\API\Traits\Resource;
 
+use Psr\Http\Message\StreamInterface;
 use GuzzleHttp\Psr7\LazyOpenStream;
 use Zendesk\API\Exceptions\CustomException;
 use Zendesk\API\Exceptions\MissingParametersException;
@@ -30,11 +31,12 @@ trait MultipartUpload
     /**
      * Uploads an file with the given upload name.
      *
-     * @param array $params
+     * @param array  $params
      *
-     * @throws \Exception
-     *
-     * @return mixed
+     * @param string $routeKey
+     * @return null|\stdClass
+     * @throws CustomException
+     * @throws MissingParametersException
      */
     public function upload(array $params, $routeKey = __FUNCTION__)
     {
@@ -42,7 +44,8 @@ trait MultipartUpload
             throw new MissingParametersException(__METHOD__, ['file']);
         }
 
-        if (! file_exists($params['file'])) {
+        $isFileStream = $params['file'] instanceof StreamInterface;
+        if (! $isFileStream && ! file_exists($params['file'])) {
             throw new CustomException('File ' . $params['file'] . ' could not be found in ' . __METHOD__);
         }
 
@@ -57,6 +60,14 @@ trait MultipartUpload
             $route = $this->resourceName . '/uploads.json';
         }
 
+        if ($isFileStream) {
+            $filename = $params['file']->getMetadata('uri');
+            $stream = $params['file'];
+        } else {
+            $filename = $params['file'];
+            $stream = new LazyOpenStream($params['file'], 'r');
+        }
+
         $response = Http::send(
             $this->client,
             $route,
@@ -65,8 +76,8 @@ trait MultipartUpload
                 'multipart' => [
                     [
                         'name'     => $this->getUploadName(),
-                        'contents' => new LazyOpenStream($params['file'], 'r'),
-                        'filename' => $params['file']
+                        'contents' => $stream,
+                        'filename' => $filename
                     ]
                 ]
             ]

@@ -7,7 +7,11 @@ namespace Zendesk\API;
  * spl_autoload_register(function($c){@include 'src/'.preg_replace('#\\\|_(?!.+\\\)#','/',$c).'.php';});
  */
 
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\HandlerStack;
 use Zendesk\API\Exceptions\AuthException;
+use Zendesk\API\Middleware\RetryHandler;
+use Zendesk\API\Resources\Chat;
 use Zendesk\API\Resources\Core\Activities;
 use Zendesk\API\Resources\Core\AppInstallations;
 use Zendesk\API\Resources\Core\Apps;
@@ -50,7 +54,9 @@ use Zendesk\API\Resources\Core\TwitterHandles;
 use Zendesk\API\Resources\Core\UserFields;
 use Zendesk\API\Resources\Core\Users;
 use Zendesk\API\Resources\Core\Views;
+use Zendesk\API\Resources\Embeddable;
 use Zendesk\API\Resources\HelpCenter;
+use Zendesk\API\Resources\Talk;
 use Zendesk\API\Resources\Voice;
 use Zendesk\API\Traits\Utility\InstantiatorTrait;
 use Zendesk\API\Utilities\Auth;
@@ -60,42 +66,51 @@ use Zendesk\API\Utilities\Auth;
  *
  * @method Activities activities()
  * @method Apps apps()
- * @method Attachments attachments()
+ * @method AppInstallations appInstallations()
+ * @method Attachments attachments($id = null)
  * @method AuditLogs auditLogs()
+ * @method AutoComplete autocomplete()
  * @method Automations automations()
  * @method Bookmarks bookmarks()
- * @method Debug debug()
+ * @method Brands brands($id = null)
+ * @method CustomRoles customRoles()
  * @method DynamicContent dynamicContent()
- * @method Groups groups()
+ * @method GroupMemberships groupMemberships()
+ * @method Groups groups($id = null)
  * @method Incremental incremental()
+ * @method JobStatuses jobStatuses()
  * @method Locales locales()
  * @method Macros macros()
- * @method OAuthClients oauthClients()
+ * @method OAuthClients oauthClients($id = null)
+ * @method OAuthTokens oauthTokens($id = null)
  * @method OrganizationFields organizationFields()
+ * @method OrganizationMemberships organizationMemberships()
  * @method Organizations organizations()
+ * @method OrganizationSubscriptions organizationSubscriptions()
  * @method PushNotificationDevices pushNotificationDevices()
- * @method Requests requests()
- * @method Search search()
- * @method Sessions sessions()
+ * @method Requests requests($id = null)
  * @method SatisfactionRatings satisfactionRatings()
+ * @method Search search()
+ * @method Sessions sessions($id = null)
  * @method SharingAgreements sharingAgreements()
  * @method SlaPolicies slaPolicies()
  * @method SupportAddresses supportAddresses()
  * @method SuspendedTickets suspendedTickets()
- * @method Tags tags()
+ * @method Tags tags($id = null)
  * @method Targets targets()
- * @method Tickets tickets()
+ * @method Tickets tickets($id = null)
+ * @method TicketFields ticketFields($id = null)
  * @method TicketImports ticketImports()
- * @method TwitterHandles twitterHandles()
  * @method Triggers triggers()
- * @method UserFields userFields()
- * @method Users users()
+ * @method TwitterHandles twitterHandles()
+ * @method UserFields userFields($id = null)
+ * @method Users users($id = null)
  * @method Views views()
  *
  */
 class HttpClient
 {
-    const VERSION = '2.0.0';
+    const VERSION = '2.2.8';
 
     use InstantiatorTrait;
 
@@ -115,10 +130,6 @@ class HttpClient
     /**
      * @var string
      */
-    protected $username;
-    /**
-     * @var string
-     */
     protected $scheme;
     /**
      * @var string
@@ -133,9 +144,9 @@ class HttpClient
      */
     protected $apiUrl;
     /**
-     * @var string
+     * @var string This is appended between the full base domain and the resource endpoint
      */
-    protected $apiVer = 'v2';
+    protected $apiBasePath;
     /**
      * @var array|null
      */
@@ -153,45 +164,71 @@ class HttpClient
      * @var HelpCenter
      */
     public $helpCenter;
+
     /**
      * @var Voice
      */
     public $voice;
 
     /**
+     * @var Embeddable
+     */
+    public $embeddable;
+
+    /**
+     * @var Chat
+     */
+    public $chat;
+
+    /**
+     * @var Talk
+     */
+    public $talk;
+
+    /**
      * @param string $subdomain
      * @param string $username
+     * @param string $scheme
+     * @param string $hostname
+     * @param int $port
+     * @param \GuzzleHttp\Client $guzzle
      */
 
     public function __construct(
         $subdomain,
-        $username,
+        $username = '',
         $scheme = "https",
         $hostname = "zendesk.com",
         $port = 443,
         $guzzle = null
     ) {
         if (is_null($guzzle)) {
-            $this->guzzle = new \GuzzleHttp\Client();
+            $handler = HandlerStack::create();
+            $handler->push(new RetryHandler(['retry_if' => function ($retries, $request, $response, $e) {
+                return $e instanceof RequestException && strpos($e->getMessage(), 'ssl') !== false;
+            }]), 'retry_handler');
+            $this->guzzle = new \GuzzleHttp\Client(compact('handler'));
         } else {
             $this->guzzle = $guzzle;
         }
 
         $this->subdomain = $subdomain;
-        $this->username  = $username;
         $this->hostname  = $hostname;
         $this->scheme    = $scheme;
         $this->port      = $port;
 
         if (empty($subdomain)) {
-            $this->apiUrl = "$scheme://$hostname:$port/api/{$this->apiVer}/";
+            $this->apiUrl = "$scheme://$hostname:$port/";
         } else {
-            $this->apiUrl = "$scheme://$subdomain.$hostname:$port/api/{$this->apiVer}/";
+            $this->apiUrl = "$scheme://$subdomain.$hostname:$port/";
         }
 
         $this->debug      = new Debug();
         $this->helpCenter = new HelpCenter($this);
         $this->voice      = new Voice($this);
+        $this->embeddable = new Embeddable($this);
+        $this->chat       = new Chat($this);
+        $this->talk       = new Talk($this);
     }
 
     /**
@@ -277,9 +314,11 @@ class HttpClient
     }
 
     /**
-     * @param array $headers
-     *
+     * @param string $key The name of the header to set
+     * @param string $value The value to set in the header
      * @return HttpClient
+     * @internal param array $headers
+     *
      */
     public function setHeader($key, $value)
     {
@@ -319,9 +358,30 @@ class HttpClient
     }
 
     /**
+     * Sets the api base path
+     *
+     * @param string $apiBasePath
+     */
+    public function setApiBasePath($apiBasePath)
+    {
+        $this->apiBasePath = $apiBasePath;
+    }
+
+    /**
+     * Returns the api base path
+     *
+     * @return string
+     */
+    public function getApiBasePath()
+    {
+        return $this->apiBasePath;
+    }
+
+    /**
      * Set debug information as an object
      *
      * @param mixed  $lastRequestHeaders
+     * @param mixed  $lastRequestBody
      * @param mixed  $lastResponseCode
      * @param string $lastResponseHeaders
      * @param mixed  $lastResponseError
@@ -373,7 +433,7 @@ class HttpClient
      */
     public function getSideload(array $params = [])
     {
-        // Allow both for backward compatability
+        // Allow both for backward compatibility
         $sideloadKeys = array('include', 'sideload');
 
         if (! empty($sideloads = array_intersect_key($params, array_flip($sideloadKeys)))) {
@@ -384,6 +444,16 @@ class HttpClient
         }
     }
 
+    /**
+     * This is a helper method to do a get request.
+     *
+     * @param       $endpoint
+     * @param array $queryParams
+     *
+     * @return \stdClass | null
+     * @throws \Zendesk\API\Exceptions\AuthException
+     * @throws \Zendesk\API\Exceptions\ApiResponseException
+     */
     public function get($endpoint, $queryParams = [])
     {
         $sideloads = $this->getSideload($queryParams);
@@ -408,18 +478,22 @@ class HttpClient
      * @param       $endpoint
      * @param array $postData
      *
-     * @return array
-     * @throws Exceptions\ApiResponseException
+     * @param array $options
+     * @return null|\stdClass
+     * @throws \Zendesk\API\Exceptions\AuthException
+     * @throws \Zendesk\API\Exceptions\ApiResponseException
      */
-    public function post($endpoint, $postData = [])
+    public function post($endpoint, $postData = [], $options = [])
     {
+        $extraOptions = array_merge($options, [
+            'postFields' => $postData,
+            'method' => 'POST'
+        ]);
+
         $response = Http::send(
             $this,
             $endpoint,
-            [
-                'postFields' => $postData,
-                'method'     => 'POST'
-            ]
+            $extraOptions
         );
 
         return $response;
@@ -431,8 +505,9 @@ class HttpClient
      * @param       $endpoint
      * @param array $putData
      *
-     * @return array
-     * @throws Exceptions\ApiResponseException
+     * @return \stdClass | null
+     * @throws \Zendesk\API\Exceptions\AuthException
+     * @throws \Zendesk\API\Exceptions\ApiResponseException
      */
     public function put($endpoint, $putData = [])
     {
@@ -450,8 +525,9 @@ class HttpClient
      *
      * @param $endpoint
      *
-     * @return array
-     * @throws Exceptions\ApiResponseException
+     * @return null
+     * @throws \Zendesk\API\Exceptions\AuthException
+     * @throws \Zendesk\API\Exceptions\ApiResponseException
      */
     public function delete($endpoint)
     {

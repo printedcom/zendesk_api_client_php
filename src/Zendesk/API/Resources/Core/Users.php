@@ -56,12 +56,13 @@ class Users extends ResourceAbstract
 
         $this->setRoutes([
             'related'                    => 'users/{id}/related.json',
-            'merge'                      => 'users/me/merge.json',
+            'merge'                      => 'users/{id}/merge.json',
             'search'                     => 'users/search.json',
             'autocomplete'               => 'users/autocomplete.json',
             'setPassword'                => 'users/{id}/password.json',
             'changePassword'             => 'users/{id}/password.json',
             'updateMany'                 => 'users/update_many.json',
+            'createOrUpdate'             => 'users/create_or_update.json',
             'createOrUpdateMany'         => 'users/create_or_update_many.json',
             'createMany'                 => 'users/create_many.json',
             'updateProfileImageFromFile' => 'users/{id}.json',
@@ -82,7 +83,8 @@ class Users extends ResourceAbstract
             'organizationMemberships'   => OrganizationMemberships::class,
             'organizationSubscriptions' => OrganizationSubscriptions::class,
             'requests'                  => Requests::class,
-            'sessions'                  => Sessions::class
+            'sessions'                  => Sessions::class,
+            'tickets'                   => UserTickets::class,
         ];
     }
 
@@ -93,7 +95,7 @@ class Users extends ResourceAbstract
      *
      * @throws ResponseException
      * @throws \Exception
-     * @return mixed
+     * @return \stdClass | null
      */
     public function findAll(array $params = [])
     {
@@ -115,7 +117,7 @@ class Users extends ResourceAbstract
      *
      * @throws ResponseException
      * @throws \Exception
-     * @return mixed
+     * @return \stdClass | null
      */
     public function findMany(array $params = [])
     {
@@ -142,7 +144,7 @@ class Users extends ResourceAbstract
      * @throws MissingParametersException
      * @throws ResponseException
      * @throws \Exception
-     * @return mixed
+     * @return \stdClass | null
      */
     public function related(array $params = [])
     {
@@ -162,27 +164,30 @@ class Users extends ResourceAbstract
     }
 
     /**
-     * Merge the specified user (???)
+     * Merge user (by default yourself) with the specified user
      *
      * @param array $params
      *
      * @throws MissingParametersException
      * @throws ResponseException
      * @throws \Exception
-     * @return mixed
+     * @return \stdClass | null
      */
     public function merge(array $params = [])
     {
-        $myId    = $this->getChainedParameter(get_class($this));
-        $mergeMe = ! isset($myId) || is_null($myId);
+        $id = $this->getChainedParameter(get_class($this));
+        $mergeMe = ($id === null || $id === 'me');
         $hasKeys = $mergeMe ? ['email', 'password'] : ['id'];
+
         if (! $this->hasKeys($params, $hasKeys)) {
             throw new MissingParametersException(__METHOD__, $hasKeys);
         }
 
         $response = Http::send(
             $this->client,
-            $this->getRoute(__FUNCTION__),
+            $this->getRoute(__FUNCTION__, [
+                'id' => $mergeMe ? 'me' : $id,
+            ]),
             ['postFields' => [$this->objectName => $params], 'method' => 'PUT']
         );
 
@@ -196,7 +201,7 @@ class Users extends ResourceAbstract
      *
      * @throws MissingParametersException
      * @throws ResponseException
-     * @return mixed
+     * @return \stdClass | null
      */
     public function suspend(array $params = [])
     {
@@ -216,7 +221,7 @@ class Users extends ResourceAbstract
      *
      * @throws ResponseException
      * @throws \Exception
-     * @return mixed
+     * @return \stdClass | null
      */
     public function search(array $params)
     {
@@ -230,7 +235,7 @@ class Users extends ResourceAbstract
      *
      * @throws ResponseException
      * @throws \Exception
-     * @return mixed
+     * @return \stdClass | null
      */
     public function autocomplete(array $params)
     {
@@ -272,7 +277,7 @@ class Users extends ResourceAbstract
      * @throws MissingParametersException
      * @throws ResponseException
      * @throws \Exception
-     * @return mixed
+     * @return \stdClass | null
      */
     public function updateProfileImageFromFile(array $params)
     {
@@ -290,7 +295,7 @@ class Users extends ResourceAbstract
      * @throws MissingParametersException
      * @throws ResponseException
      * @throws \Exception
-     * @return mixed
+     * @return \stdClass | null
      */
     public function updateProfileImageFromUrl(array $params)
     {
@@ -320,7 +325,7 @@ class Users extends ResourceAbstract
      *
      * @throws MissingParametersException
      * @throws ResponseException
-     * @return mixed
+     * @return \stdClass | null
      */
     public function me(array $params = [])
     {
@@ -337,7 +342,7 @@ class Users extends ResourceAbstract
      * @throws MissingParametersException
      * @throws ResponseException
      * @throws \Exception
-     * @return mixed
+     * @return null
      */
     public function setPassword(array $params)
     {
@@ -359,7 +364,7 @@ class Users extends ResourceAbstract
      * @throws MissingParametersException
      * @throws ResponseException
      * @throws \Exception
-     * @return mixed
+     * @return null
      */
     public function changePassword(array $params)
     {
@@ -371,6 +376,22 @@ class Users extends ResourceAbstract
         unset($params['id']);
 
         return $this->client->put($this->getRoute(__FUNCTION__, ['id' => $id]), $params);
+    }
 
+    /**
+     * Create or updates a user
+     *
+     * @param array  $params
+     *
+     * @param string $routeKey
+     * @return null|\stdClass
+     */
+    public function createOrUpdate(array $params, $routeKey = __FUNCTION__)
+    {
+        $route = $this->getRoute($routeKey, $params);
+        return $this->client->post(
+            $route,
+            [$this->objectName => $params]
+        );
     }
 }

@@ -44,7 +44,7 @@ class TicketAudits extends ResourceAbstract
      *
      * @param array $params
      *
-     * @return mixed
+     * @return \stdClass | null
      * @throws MissingParametersException
      */
     public function findAll(array $params = [])
@@ -63,12 +63,10 @@ class TicketAudits extends ResourceAbstract
     /**
      * Show a specific audit record
      *
+     * @param null|int $id
      * @param array $params
-     *
+     * @return null|\stdClass
      * @throws MissingParametersException
-     * @throws \Exception
-     *
-     * @return mixed
      */
     public function find($id = null, array $params = [])
     {

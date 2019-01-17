@@ -4,6 +4,7 @@ namespace Zendesk\API\UnitTests\Core;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use GuzzleHttp\Psr7\LazyOpenStream;
 use Zendesk\API\UnitTests\BasicTest;
 
 /**
@@ -183,7 +184,6 @@ class ResourceTest extends BasicTest
                 'postFields'  => ['dummy' => $postFields],
             ]
         );
-
     }
 
     /**
@@ -206,7 +206,6 @@ class ResourceTest extends BasicTest
             'PUT',
             ['postFields' => ['dummies' => $postFields]]
         );
-
     }
 
     /**
@@ -352,6 +351,30 @@ class ResourceTest extends BasicTest
             'dummy_resource/create_or_update_many.json',
             'POST',
             ['postFields' => ['dummies' => $postFields]]
+        );
+    }
+
+    /**
+     * Test multipart upload with streams
+     */
+    public function testUploadStreamMultiPart()
+    {
+        $this->mockAPIResponses([
+            new Response(200, [], '')
+        ]);
+
+        $params = [
+            'file' => new LazyOpenStream(getcwd() . '/tests/assets/UK.png', 'r')
+        ];
+
+        $this->dummyResource->upload($params);
+
+        $this->assertLastRequestIs(
+            [
+                'method' => 'POST',
+                'endpoint' => 'dummy_resource/uploads.json',
+                'multipart' => true,
+            ]
         );
     }
 }

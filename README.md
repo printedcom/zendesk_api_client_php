@@ -1,7 +1,10 @@
 # Zendesk PHP API Client Library #
 
 [![Build Status](https://travis-ci.org/zendesk/zendesk_api_client_php.svg?branch=master)](https://travis-ci.org/zendesk/zendesk_api_client_php)
+[![Latest Stable Version](https://poser.pugx.org/zendesk/zendesk_api_client_php/v/stable)](https://packagist.org/packages/zendesk/zendesk_api_client_php)
+[![Total Downloads](https://poser.pugx.org/zendesk/zendesk_api_client_php/downloads)](https://packagist.org/packages/zendesk/zendesk_api_client_php)
 [![Code Climate](https://codeclimate.com/github/zendesk/zendesk_api_client_php/badges/gpa.svg)](https://codeclimate.com/github/zendesk/zendesk_api_client_php)
+[![License](https://poser.pugx.org/zendesk/zendesk_api_client_php/license)](https://packagist.org/packages/zendesk/zendesk_api_client_php)
 
 ## API Client Version
 
@@ -20,15 +23,7 @@ The Zendesk PHP API client can be installed using [Composer](https://packagist.o
 
 ### Composer
 
-Inside of `composer.json` specify the following:
-
-``` json
-{
-  "require": {
-    "zendesk/zendesk_api_client_php": "dev-master"
-  }
-}
-```
+To install run `composer require zendesk/zendesk_api_client_php`
 
 ### Upgrading from V1 to V2
 If you are upgrading from [v1](https://github.com/zendesk/zendesk_api_client_php/tree/v1) of the client, we've written an [upgrade guide](https://github.com/zendesk/zendesk_api_client_php/wiki/Upgrading-from-v1-to-v2) to highlight some of the key differences.
@@ -45,10 +40,10 @@ require 'vendor/autoload.php';
 use Zendesk\API\HttpClient as ZendeskAPI;
 
 $subdomain = "subdomain";
-$username  = "email@company.com";
+$username  = "email@example.com"; // replace this with your registered email
 $token     = "6wiIBWbGkBMo1mRDMuVwkw1EPsNkeUj95PIz2akv"; // replace this with your token
 
-$client = new ZendeskAPI($subdomain, $username);
+$client = new ZendeskAPI($subdomain);
 $client->setAuth('basic', ['username' => $username, 'token' => $token]);
 ```
 
@@ -59,6 +54,10 @@ $client->setAuth('basic', ['username' => $username, 'token' => $token]);
 ``` php
 // Get all tickets
 $tickets = $client->tickets()->findAll();
+print_r($tickets);
+
+// Get all tickets regarding a specific user.
+$tickets = $client->users($requesterId)->tickets()->requested();
 print_r($tickets);
 
 // Create a new ticket
@@ -79,6 +78,10 @@ $client->tickets()->update(123,[
 
 // Delete a ticket
 $client->tickets()->delete(123);
+
+// Get all users
+$users = $client->users()->findAll();
+print_r($users);
 ```
 
 ### Attachments
@@ -91,14 +94,18 @@ $attachment = $client->attachments()->upload([
 ]);
 ```
 
-### Test suite
+Attaching files to comments
 
-The test suite is run via phpunit. Note that these are all live tests that must be run targeted at a real Zendesk instance. Credentials can be provided by setting the environment variables in phpunit.xml; a sample is provided at phpunit.xml.dist.
-
-To run the unit tests: `vendor/bin/phpunit --testsuite "Zendesk API Unit Test Suites"`
-
-To run the live tests: `vendor/bin/phpunit --testsuite "Zendesk API Live Test Suites"`
-
+``` php
+$ticket = $client->tickets()->create([          
+    'subject' => 'The quick brown fox jumps over the lazy dog',      
+    'comment' => [                              
+        'body' => 'Lorem ipsum dolor sit amet, consectetur adipisicing elit, ' .
+                  'sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.', 
+        'uploads'   => [$attachment->upload->token]                 
+    ]                                           
+]);
+```
 
 ### Side-loading
 
@@ -111,7 +118,7 @@ $tickets = $client->tickets()->sideload(['users', 'groups'])->findAll();
 ```
 
 ### Pagination
-The Zendesk API offers a way to get the next pages for the requests and is documented in [the Zendesk Deveoloper Documentation](https://developer.zendesk.com/rest_api/docs/core/introduction#pagination).
+The Zendesk API offers a way to get the next pages for the requests and is documented in [the Zendesk Developer Documentation](https://developer.zendesk.com/rest_api/docs/core/introduction#pagination).
 
 The way to do this is to pass it as an option to your request.
 
@@ -124,157 +131,35 @@ The allowed options are
 * page
 * sort_order
 
+### Retrying Requests
 
-## Coding Standard
+Add the `RetryHandler` middleware on the `HandlerStack` of your `GuzzleHttp\Client` instance. By default `Zendesk\Api\HttpClient` 
+retries: 
+* timeout requests
+* those that throw `Psr\Http\Message\RequestInterface\ConnectException:class`
+* and those that throw `Psr\Http\Message\RequestInterface\RequestException:class` that are identified as ssl issue.
 
-This project strictly follows the [PSR-2](http://www.php-fig.org/psr/psr-2/) coding standard.
+#### Available options
+Options are passed on `RetryHandler` as an array of values.
 
-[PHP Codesniffer](https://github.com/squizlabs/PHP_CodeSniffer) is used to verify that the standard is being followed.
+* max = 2 _limit of retries_
+* interval = 300 _base delay between retries in milliseconds_
+* max_interval = 20000 _maximum delay value_
+* backoff_factor = 1 _backoff factor_
+* exceptions = [ConnectException::class] _Exceptions to retry without checking retry_if_
+* retry_if = null _callable function that can decide whether to retry the request or not_
 
-In addition to the PSR2 standard which we try to follow the following rules as much as possible:
+## Contributing
 
-### PHPDoc
+Pull Requests are always welcome but before you send one please read our [contribution guidelines](#CONTRIBUTING.md). It would
+speed up the process and would make sure that everybody follows the community's standard.
 
-All Classes, Class Methods and Properties should have docblocs.
+### Debugging
 
-#### Classes
-
-Class docblocks should contain:
-* A short description of the class
-* Any methods available that are called via magic method with what that method returns.
-
-A good example is
-``` php
-/**
- * Client class, base level access
- *
- * @method Debug debug()
- * @method Tickets ticket()
- * @method Views views()
- */
-```
-
-
-#### Methods
-
-Method docblocks should contain:
-* A short description of what the method does.
-* The parameters passed with what type to expect.
-* Description of the parameters passed with examples(optional).
-* The type of the return.
-* All the possible exceptions the method may throw.
-
-A good example of this is
-
-``` php
-/**
- * Find a specific ticket by id or series of ids
- *
- * @param integer|null $id
- * @param array        $queryParams
- *
- * @return Array
- *
- * @throws MissingParametersException
- * @throws \Exception
- */
-```
-
-#### Properties
-
-Class properties docblocs should contain:
-* A short description of the property (optional)
-* The var type
-
-A good example of this
-
-``` php
-/**
- * This contains the Auth object to be used for authenticating with the Client
- *
- * @var Zendesk\API\Utilities\Auth
- */
-```
-
-### Arrays
-The short notations for declaring arrays (`[]`) is preferred over the longer `array()`.
-
-Align `=>`s following the longest key to make the arrays easier to read.
-
-``` php
-[
-    'findAll'             => "users/{userId}/{$this->resourceName}.json",
-    'find'                => "users/{userId}/{$this->resourceName}/{id}.json",
-    'update'              => "users/{userId}/{$this->resourceName}/{id}.json",
-    'makePrimary'         => "users/{userId}/{$this->resourceName}/{id}/make_primary.json",
-    'verify'              => "users/{userId}/{$this->resourceName}/{id}/verify.json",
-    'requestVerification' => "users/{userId}/{$this->resourceName}/{id}/request_verification.json",
-    'delete'              => "users/{userId}/{$this->resourceName}/{id}.json",
-    'create'              => "users/{userId}/{$this->resourceName}.json",
-    'createAsEndUser'     => "end_users/{userId}/{$this->resourceName}.json",
-]
-```
-
-### Grouped assignment statements
-
-Align the `=` for grouped assignment statements.
-
-``` php
-$headers             = 'sample';
-$lastRequestBody     = 'example';
-$lastResponseCode    = 'something';
-$lastResponseHeaders = 'test';
-$lastResponseError   = 'test2';
-
-```
-
-### Traits
-
-#### Declaration
-
-* Traits are added after class constants and arranged alphabetically when declared.
-* Group traits accordingly by adding a new line after each group.
-* Groups are ordered as follows:
-1. Instantiator
-2. Single resource
-3. Bulk traits
-
-#### Resource Traits
-
-When adding a resource, use traits to define available API calls. Resource traits are namespaced under `Zendesk\API\Traits\Resource`.
-
-**Single Resource**
-* Create
-* Delete
-* Find
-* FindAll
-* Update
-* Defaults - this adds **Find**, **FindAll**, **Create**, **Update**, and **Delete**
-
-**Bulk traits**
-* CreateMany
-* DeleteMany
-* FindMany
-* UpdateMany
-* CreateOrUpdateMany
-
-#### Utility Traits
-
-Use `Zendesk\API\Traits\Utility\InstantiatorTrait` when you want a resource to be chainable to other resources. See `Zendesk/API/Resources/Tickets.php`.
-
-``` php
-$this->client->tickets()->comments()->findAll();
-```
-
-## Note on Patches/Pull Requests
-1. Fork the project.
-2. Make your feature addition or bug fix.
-3. Add tests for it. This is important so that we don't break your improvement in a future version unintentionally.
-4. Please follow the [coding standard described above](#coding-standard).
-4. Commit and do not mess with version or history. (If you want to have
-   your own version, that is fine but bump version in a commit by itself I can
-   ignore when we pull)
-5. Send a pull request. Bonus points for topic branches.
+To help would be contributors, we've added a REPL tool. It is a simple wrapper for [psysh](http://psysh.org) and symfony's console.
+On your terminal, run `bin/console <subdomain> <email> <api token>`. This would automatically create an instance of `Zendesk\API\HttpClient` on $client variable.
+After that you would be able to enter any valid php statement. The goal of the tool is to speed up the process in which developers
+can experiment on the code base.
 
 ## Copyright and license
 

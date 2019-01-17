@@ -5,6 +5,7 @@ namespace Zendesk\API;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Psr7\LazyOpenStream;
 use GuzzleHttp\Psr7\Request;
+use Psr\Http\Message\StreamInterface;
 use Zendesk\API\Exceptions\ApiResponseException;
 use Zendesk\API\Exceptions\AuthException;
 
@@ -28,7 +29,7 @@ class Http
      *                             string $method "GET", "POST", etc. Default is GET.
      *                             string $contentType Default is "application/json"
      *
-     * @return mixed The response body, parsed from JSON into an object. Also returns bool or null if something went wrong
+     * @return \stdClass | null The response body, parsed from JSON into an object. Also returns null if something went wrong
      * @throws ApiResponseException
      * @throws AuthException
      */
@@ -55,7 +56,7 @@ class Http
 
         $request = new Request(
             $options['method'],
-            $client->getApiUrl() . $endPoint,
+            $client->getApiUrl() . $client->getApiBasePath() . $endPoint,
             $headers
         );
 
@@ -67,7 +68,9 @@ class Http
         } elseif (! empty($options['postFields'])) {
             $request = $request->withBody(\GuzzleHttp\Psr7\stream_for(json_encode($options['postFields'])));
         } elseif (! empty($options['file'])) {
-            if (is_file($options['file'])) {
+            if ($options['file'] instanceof StreamInterface) {
+                $request = $request->withBody($options['file']);
+            } elseif (is_file($options['file'])) {
                 $fileStream = new LazyOpenStream($options['file'], 'r');
                 $request    = $request->withBody($fileStream);
             }
@@ -82,15 +85,18 @@ class Http
         }
 
         try {
-            list ($request, $requestOptions) = $client->getAuth()->prepareRequest($request, $requestOptions);
+            // enable anonymous access
+            if ($client->getAuth()) {
+                list ($request, $requestOptions) = $client->getAuth()->prepareRequest($request, $requestOptions);
+            }
             $response = $client->guzzle->send($request, $requestOptions);
         } catch (RequestException $e) {
-            $requestException = RequestException::create($e->getRequest(), $e->getResponse());
+            $requestException = RequestException::create($e->getRequest(), $e->getResponse(), $e);
             throw new ApiResponseException($requestException);
         } finally {
             $client->setDebug(
                 $request->getHeaders(),
-                $request->getBody()->getContents(),
+                $request->getBody(),
                 isset($response) ? $response->getStatusCode() : null,
                 isset($response) ? $response->getHeaders() : null,
                 isset($e) ? $e : null
@@ -99,12 +105,8 @@ class Http
             $request->getBody()->rewind();
         }
 
-        if (isset($file)) {
-            fclose($file);
-        }
-
         $client->setSideload(null);
 
-        return json_decode($response->getBody()->getContents());
+        return json_decode($response->getBody());
     }
 }

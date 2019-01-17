@@ -96,7 +96,7 @@ class GroupMemberships extends ResourceAbstract
      *
      * @param array $params
      *
-     * @return array
+     * @return mixed
      */
     public function assignable(array $params = [])
     {
@@ -108,7 +108,7 @@ class GroupMemberships extends ResourceAbstract
      *
      * @param array $params
      *
-     * @return mixed
+     * @return \stdClass | null
      * @throws MissingParametersException
      */
     public function makeDefault($params = [])

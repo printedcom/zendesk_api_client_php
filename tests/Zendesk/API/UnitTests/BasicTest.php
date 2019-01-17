@@ -6,10 +6,10 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
-use GuzzleHttp\Psr7\LazyOpenStream;
 use GuzzleHttp\Psr7\MultipartStream;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit_Framework_TestCase;
+use Psr\Http\Message\StreamInterface;
 use Zendesk\API\HttpClient;
 
 /**
@@ -85,8 +85,10 @@ abstract class BasicTest extends \PHPUnit_Framework_TestCase
      *
      * @param array $responses
      *   An array of GuzzleHttp\Psr7\Response objects
+     * @param array $config
+     *   config for the GuzzleHttp\Client
      */
-    protected function mockApiResponses($responses = [])
+    protected function mockApiResponses($responses = [], array $config = [])
     {
         if (empty($responses)) {
             return;
@@ -96,11 +98,16 @@ abstract class BasicTest extends \PHPUnit_Framework_TestCase
 
         $history = Middleware::history($this->mockedTransactionsContainer);
         $mock    = new MockHandler($responses);
-        $handler = HandlerStack::create($mock);
-        $handler->push($history);
+        $handlerStack = HandlerStack::create($mock);
+        $handlerStack->push($history);
+        if (isset($config['handlers'])) {
+            foreach ($config['handlers'] as $handler) {
+                $handlerStack->push($handler);
+            }
+        }
+        $config['handler'] = $handlerStack;
 
-        $this->client->guzzle = new Client(['handler' => $handler]);
-
+        return $this->client->guzzle = new Client($config);
     }
 
     /**
@@ -132,7 +139,8 @@ abstract class BasicTest extends \PHPUnit_Framework_TestCase
                 'headers'    => [
                     'Accept'       => 'application/json',
                     'Content-Type' => 'application/json'
-                ]
+                ],
+                'apiBasePath' => '/api/v2/',
             ],
             $options
         );
@@ -150,11 +158,15 @@ abstract class BasicTest extends \PHPUnit_Framework_TestCase
 
         if (isset($options['file'])) {
             $body = $request->getBody();
-            $this->assertInstanceOf(LazyOpenStream::class, $body);
+            $this->assertInstanceOf(StreamInterface::class, $body);
             $this->assertGreaterThan(0, $body->getSize());
-            $this->assertEquals($options['file'], $body->getMetadata('uri'));
             $this->assertNotEmpty($header = $request->getHeaderLine('Content-Type'));
             $this->assertEquals('application/binary', $header);
+            if ($options['file'] instanceof StreamInterface) {
+                $this->assertEquals($options['file']->getMetadata('uri'), $body->getMetadata('uri'));
+            } else {
+                $this->assertEquals($options['file'], $body->getMetadata('uri'));
+            }
             unset($options['headers']['Content-Type']);
         }
 
@@ -171,9 +183,18 @@ abstract class BasicTest extends \PHPUnit_Framework_TestCase
             $this->assertEquals($options['method'], $request->getMethod());
         }
 
+        if (isset($options['apiBasePath'])) {
+            $this->assertSame(
+                0,
+                strpos($request->getUri()->getPath(), $options['apiBasePath']),
+                "Failed asserting that the API basepath is {$options['apiBasePath']}"
+            );
+        }
+
         if (isset($options['endpoint'])) {
-            // Truncate the `/api/v2` part of the target
-            $endpoint = str_replace('/api/v2/', '', $request->getUri()->getPath());
+            // Truncate the base path from the target, this was added since the existing usage pattern for
+            // $options['endpoint'] does not include the api/v2 base path
+            $endpoint = preg_replace('/^' . preg_quote($options['apiBasePath'], '/') . '/', '', $request->getUri()->getPath());
             $this->assertEquals($options['endpoint'], $endpoint);
         }
 

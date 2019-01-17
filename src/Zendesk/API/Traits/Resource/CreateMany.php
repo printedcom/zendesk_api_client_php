@@ -2,6 +2,7 @@
 
 namespace Zendesk\API\Traits\Resource;
 
+use Zendesk\API\Exceptions\ResponseException;
 use Zendesk\API\Exceptions\RouteException;
 
 /**
@@ -18,7 +19,7 @@ trait CreateMany
      * @throws ResponseException
      * @throws \Exception
      *
-     * @return mixed
+     * @return \stdClass | null
      */
     public function createMany(array $params)
     {

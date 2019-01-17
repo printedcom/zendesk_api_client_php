@@ -283,4 +283,45 @@ class TicketsTest extends BasicTest
     {
         $this->client->tickets()->find(99999999);
     }
+
+    /**
+     * Test if a ticket with a group_id is assigned to the correct group.
+     */
+    public function testAssignTicketToGroup()
+    {
+        $faker = Factory::create();
+        $group = $this->client->groups()->create(['name' => $faker->word])->group;
+
+        $ticket = $this->createTestTicket([
+            'group_id' => $group->id,
+            'type' => 'problem',
+            'tags' => ['testing', 'api']
+        ]);
+
+        $this->assertEquals($group->id, $ticket->group_id);
+
+        $this->client->groups()->delete($group->id);
+        $this->client->tickets()->delete($ticket->id);
+    }
+
+    /**
+     * Test if tags are updated on ticket updated.
+     *
+     * @throws \Zendesk\API\Exceptions\MissingParametersException
+     */
+    public function testTagsAdded()
+    {
+        $faker = Factory::create();
+
+        $tags = $faker->words(10);
+
+        $ticket = $this->createTestTicket();
+        $this->client->tickets($ticket->id)->tags()->update(null, $tags);
+
+        $updatedTicket = $this->client->tickets()->find($ticket->id);
+
+        $this->assertEmpty(array_diff($tags, $updatedTicket->ticket->tags), 'Tags should be updated.');
+
+        $this->client->tickets()->delete($ticket->id);
+    }
 }

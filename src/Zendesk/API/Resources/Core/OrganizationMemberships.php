@@ -76,7 +76,6 @@ class OrganizationMemberships extends ResourceAbstract
 
             return "{$this->resourceName}.json";
         }
-
     }
 
     /**
@@ -84,7 +83,7 @@ class OrganizationMemberships extends ResourceAbstract
      *
      * @param array $params
      *
-     * @return mixed
+     * @return \stdClass | null
      * @throws MissingParametersException
      */
     public function makeDefault($params = [])

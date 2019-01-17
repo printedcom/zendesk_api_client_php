@@ -27,7 +27,7 @@ class PushNotificationDevices extends ResourceAbstract
      *
      * @param array $params
      *
-     * @return mixed
+     * @return null
      * @throws MissingParametersException
      * @throws \Zendesk\API\Exceptions\RouteException
      */
@@ -35,7 +35,6 @@ class PushNotificationDevices extends ResourceAbstract
     {
         if (! isset($params['tokens']) || ! is_array($params['tokens'])) {
             throw new MissingParametersException(__METHOD__, ['tokens']);
-
         }
         $postData = [$this->objectNamePlural => $params['tokens']];
 

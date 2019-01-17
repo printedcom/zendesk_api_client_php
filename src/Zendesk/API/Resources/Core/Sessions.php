@@ -54,7 +54,7 @@ class Sessions extends ResourceAbstract
     {
         $userId = $this->getChainedParameter(Users::class);
 
-        if (in_array($name, ['delete', 'deleteUserSessionss', 'find', 'findAll']) && ! is_null($userId)) {
+        if (in_array($name, ['delete', 'deleteUserSessions', 'find', 'findAll']) && ! is_null($userId)) {
             if ($name === 'findAll') {
                 return "users/{$userId}/sessions.json";
             }
@@ -70,7 +70,7 @@ class Sessions extends ResourceAbstract
      *
      * @param null $userId
      *
-     * @return array
+     * @return null
      * @throws CustomException
      * @throws MissingParametersException
      * @throws RouteException
@@ -98,7 +98,7 @@ class Sessions extends ResourceAbstract
     /**
      * Deletes the current session.
      *
-     * @return array
+     * @return null
      * @throws CustomException
      * @throws RouteException
      */
@@ -110,7 +110,7 @@ class Sessions extends ResourceAbstract
     /**
      * Shows the currently authenticated session
      *
-     * @return array
+     * @return \stdClass | null
      * @throws RouteException
      */
     public function current()

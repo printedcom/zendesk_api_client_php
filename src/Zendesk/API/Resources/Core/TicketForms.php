@@ -36,12 +36,11 @@ class TicketForms extends ResourceAbstract
     /**
      * Clones an existing ticket form (can't use 'clone' as method name)
      *
-     * @param array $params
+     * @param int $id
+     * @return null|\stdClass
+     * @throws MissingParametersException
+     * @internal param array $params
      *
-     * @throws MissingParametersException
-     * @throws ResponseException
-     * @throws MissingParametersException
-     * @return mixed
      */
     public function cloneForm($id = null)
     {
@@ -64,7 +63,7 @@ class TicketForms extends ResourceAbstract
      *
      * @throws ResponseException
      * @throws \Exception
-     * @return mixed
+     * @return \stdClass | null
      */
     public function reorder(array $ticketFormIds)
     {
