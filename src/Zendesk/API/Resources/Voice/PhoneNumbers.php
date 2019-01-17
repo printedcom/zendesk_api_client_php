@@ -13,6 +13,11 @@ class PhoneNumbers extends ResourceAbstract
     use Defaults;
 
     /**
+     * {@inheritdoc}
+     */
+    protected $objectName = 'phone_number';
+
+    /**
      * @inheritdoc
      */
     protected function setUpRoutes()
